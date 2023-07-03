@@ -1,0 +1,88 @@
+--------------------  exo 2 derniere question  --------------------------
+--h1
+SELECT h1_month.generate_series AS Month,
+       COUNT(distinct o.id_order) AS total_commands,
+       CONCAT(SUM(quantity * unit_price), ' Ar') AS total_amount
+FROM "contain" c
+INNER JOIN article a ON a.id_article = c.article_id
+INNER JOIN "order" o ON o.id_order = c.order_id
+right join (select generate_series(1, 12, 1)) as h1_month 
+on h1_month.generate_series = EXTRACT(MONTH FROM o.order_date)
+WHERE EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+or o.order_date is null
+GROUP BY h1_month.generate_series
+ORDER BY Month;
+
+--h2
+select to_char(months_of_years.months,'Month') as months,
+    count(distinct commandes.id_commandes) as number_of_commands,
+    sum(contain.quantity * article.price) || 'Ar' as money
+from (select generate_series('2023-01-01'::date, '2023-12-31'::date, '1 month') as months) as months_of_years
+left join commandes on date_part('month',months_of_years.months) = date_part('month',commandes.date_time_commands)
+and date_part('year',commandes.date_time_commands) = 2023
+left join contain on commandes.id_commandes = contain.id_commandes
+left join article on contain.id_article = article.id
+group by months
+order by months_of_years.months;
+--ou :
+SELECT h1_month.generate_series AS Month,
+       COUNT(distinct co.id_commandes) AS total_commands,
+       CONCAT(SUM(c.quantity * price), ' Ar') AS total_amount
+FROM contain c
+INNER JOIN article a ON a.id = c.id_article
+INNER JOIN commandes co ON co.id_commandes = c.id_commandes
+right join (select generate_series(1, 12, 1)) as h1_month 
+on h1_month.generate_series = EXTRACT(MONTH FROM co.date_time_commands)
+WHERE EXTRACT(YEAR FROM co.date_time_commands) = EXTRACT(YEAR FROM CURRENT_DATE)
+or co.date_time_commands is null
+GROUP BY h1_month.generate_series
+ORDER BY Month;
+
+--h3
+SELECT h1_month.generate_series AS Month,
+       COUNT(distinct o.id_order) AS total_commands,
+       CONCAT(SUM(b.quantite * price), ' Ar') AS total_amount
+FROM be_in b
+INNER JOIN article a ON a.id_article = b.id_article
+INNER JOIN orders o ON o.id_order = b.id_order
+right join (select generate_series(1, 12, 1)) as h1_month 
+on h1_month.generate_series = EXTRACT(MONTH FROM o.order_date)
+WHERE EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+or o.order_date is null
+GROUP BY h1_month.generate_series
+ORDER BY Month;
+
+--h4
+
+
+-------------------------  exo 3  -------------------------------
+
+-- Proposez une solution pour améliorer les performances des requêtes SELECT :
+create index on "user"(first_name);
+
+-- Définir une VIEW qui affiche la liste des ”user” dans un tableau contenant les colonnes suivantes : nom, prénom, âge, e-mail, et le nombre de post posté
+create view new_user_list as (select first_name, last_name, 
+date_part('year' ,age(now(),birthday)) age, email, count(post.id) post 
+from "user" left join post on post.id_user  = "user".id 
+group by (first_name, last_name, date_part('year' ,age(now(),birthday)), email, "user".id));
+
+--En utilisant cette “VIEW”, affichez la liste des utilisateurs qui ont moins de 30 ans qui ont déjà posté (nombre de post > 0)
+select * from new_user_list where age<30 and post>0;
+
+--Sans utiliser de “VIEW”, affichez la liste des utilisateurs qui ont moins de 30 ans qui ont déjà posté.
+-- en transformant le view en select imbriquer
+select * from 
+(
+    select first_name, last_name, 
+    date_part('year' ,age(now(),birthday)) age, email, count(post.id) post 
+    from "user" left join post on post.id_user  = "user".id 
+    group by (first_name, last_name, date_part('year' ,age(now(),birthday)), email, "user".id)
+) as select_user_list where age<30 and post>0;
+
+-- autre methode (where - group by - having)
+select first_name, last_name, 
+date_part('year' ,age(now(),birthday)) age, email, count(post.id) post 
+from "user" left join post on post.id_user  = "user".id 
+where date_part('year' ,age(now(),birthday))<30
+group by (first_name, last_name, date_part('year' ,age(now(),birthday)), email, "user".id)
+having count(post.id) >0;
